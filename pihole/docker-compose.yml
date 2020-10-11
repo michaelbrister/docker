@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  traefik:
+    container_name: traefik
+    domainname: ${domain}.lan
+
+    image: traefik:v2.2
+    restart: unless-stopped
+    # Note I opt to whitelist certain apps for exposure to traefik instead of auto discovery
+    # use `--providers.docker.exposedbydefault=true` if you don't want to have to do this
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.network=discovery"
+      - "--providers.docker.exposedbydefault=false"
+      - "--api.insecure=true"
+      - "--api.dashboard=true"
+      - "--entrypoints.http.address=:80"
+      - "--entrypoints.https.address=:443"
+      - "--log.level=DEBUG"
+      # Disable SSL verification on backend
+      - "--serverstransport.insecureskipverify=true"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - default
+      - discovery
+    dns:
+      - 192.168.1.50
+      - 192.168.1.1
+
+  unifi-controller:
+    image: linuxserver/unifi-controller:latest
+    domainname: ${domain}.lan
+
+    container_name: unifi-controller
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - MEM_LIMIT=1024M #optional
+    volumes:
+      - /root/unifi-config/data:/config
+    networks:
+      - discovery
+    ports:
+      - 3478:3478/udp
+      - 10001:10001/udp
+        #- 8080:8080
+      - 8081:8081
+      - 8443:8443
+      - 8843:8843
+      - 8880:8880
+      - 6789:6789
+    restart: unless-stopped
+    labels:
+      # required when using --providers.docker.exposedbydefault=false
+      - "traefik.enable=true"
+      - "traefik.http.routers.unifi-controller.tls=true"
+      - "traefik.http.routers.unifi-controller.rule=Host(`unifi.${domain}.lan`)"
+      - "traefik.http.routers.unifi-controller.entrypoints=https"
+      - "traefik.docker.network=discovery"
+      - "traefik.http.services.unifi-controller.loadbalancer.server.port=8443"
+      - "traefik.http.services.unifi-controller.loadbalancer.server.scheme=https"
+
+  pihole:
+    container_name: pihole
+    domainname: ${domain}.lan
+
+    image: pihole/pihole:latest
+    networks:
+      - discovery
+    ports:
+      - '0.0.0.0:53:53/tcp'
+      - '0.0.0.0:53:53/udp'
+      - '0.0.0.0:67:67/udp'
+      - '0.0.0.0:8053:80/tcp'
+    volumes:
+      - ./etc-pihole/:/etc/pihole/
+      - ./etc-dnsmasqd/:/etc/dnsmasq.d/
+      # run `touch ./pihole.log` first unless you like errors
+      # - ./pihole.log:/var/log/pihole.log
+    environment:
+      ServerIP: 192.168.1.188
+      ServerIPv6: "fdee:eeee:eeee:0::2"
+      PROXY_LOCATION: pihole
+      VIRTUAL_HOST: pihole.${domain}.lan
+      VIRTUAL_PORT: 80
+      TZ: 'America/New_York'
+      WEBPASSWORD: ${WEBPASSWORD}
+    restart: unless-stopped
+    dns:
+      - 127.0.0.1 # Required for local names resolution
+      - 1.1.1.1 # Required during startup when Pi-Hole is not fully started
+    labels:
+      # required when using --providers.docker.exposedbydefault=false
+      - "traefik.enable=true"
+      - "traefik.http.routers.pihole.rule=Host(`pihole.${domain}.lan`)"
+      - "traefik.http.routers.pihole.entrypoints=http"
+      - "traefik.docker.network=discovery"
+      - "traefik.http.services.pihole.loadbalancer.server.port=80"
+
+networks:
+  # Discovery is manually created to avoid forcing any order of docker-compose stack creation (`docker network create discovery`)
+  # allows other compose files to be seen by proxy
+  # Not required if you aren't using multiple docker-compose files...
+  discovery:
+    external: true
