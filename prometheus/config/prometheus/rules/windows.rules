@@ -1,0 +1,76 @@
+groups:
+- name: Windows 
+  rules:
+
+    - alert: InstanceDown
+      expr: up{job="Infastructure"} == 0
+      for: 10m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Instance is down {{ $labels.instance }})"
+        description: "Instance is down\n  LABELS: {{ $labels }}"
+
+    - alert: CollectorError
+      expr: windows_exporter_collector_success == 0
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Collector Error (instance {{ $labels.instance }})"
+        description: "Collector {{ $labels.collector }} was not successful\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: ServiceStatus
+      expr: windows_service_status{status="ok"} != 1
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Service Status (instance {{ $labels.instance }})"
+        description: "Windows Service state is not OK\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: CpuUsage
+      expr: 100 - (avg by (instance,name,NotifyTeam, job, severity) (irate(windows_cpu_time_total{mode="idle"}[2m])) * 100) > 95 
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: "CPU Usage (instance {{ $labels.instance }})"
+        description: "CPU Usage is more than 95%\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: MemoryUsage
+      expr: 100*(windows_os_physical_memory_free_bytes) / windows_cs_physical_memory_bytes > 95
+      for: 15m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Memory Usage (instance {{ $labels.instance }})"
+        description: "Memory Usage is more than 90%\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
+    - alert: DiskSpace Full
+      expr: round( 100 * ((windows_logical_disk_free_bytes{volume!~"HarddiskVolume.+"} / 1024 / 1024 ) / (windows_logical_disk_size_bytes{volume!~"HarddiskVolume.+"}  / 1024 / 1024)) <= 1)
+      for: 15m
+      labels:
+        severity: critical 
+      annotations:
+        summary: "Instance {{ $labels.instance }} has only {{ $value }}% free."
+        description: "Instance {{ $labels }} is low on disk space\n  LABELS: {{ $labels.instance }}"
+
+    - alert: DiskSpace %10 Free
+      expr: round( 100 * ((windows_logical_disk_free_bytes{group!="skip_diskspace_check",volume!~"HarddiskVolume.+"} / 1024 / 1024 ) / (windows_logical_disk_size_bytes{group!="skip_diskspace_check",volume!~"HarddiskVolume.+"}  / 1024 / 1024)) < 10)
+      for: 15m
+      labels:
+        severity: error
+      annotations:
+        summary: "Instance {{ $labels.instance }} has only {{ $value }}% free."
+        description: "Instance {{ $labels }} is low on disk space\n  LABELS: {{ $labels.instance }}"
+
+    - alert: DiskSpaceUsage
+      expr: 100.0 - 100 * ((windows_logical_disk_free_bytes{} / 1024 / 1024 ) / (windows_logical_disk_size_bytes{}  / 1024 / 1024)) > 80
+      for: 5m
+      labels:
+        severity: error
+      annotations:
+        summary: "Disk Space Usage (instance {{ $labels.instance }})"
+        description: "Disk Space on Drive is used more than 80%\n  VALUE = {{ $value }}\n  LABELS: {{ $labels }}"
+
