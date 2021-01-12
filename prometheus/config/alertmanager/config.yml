@@ -1,0 +1,109 @@
+global:
+    smtp_smarthost: 
+    smtp_from: prometheus@orginization.com 
+    smtp_hello: localhost 
+    smtp_require_tls: false
+    resolve_timeout: 5m
+
+route:
+    # The labels by which incoming alerts are grouped together. For example,
+    # multiple alerts coming in for cluster=A and alertname=LatencyHigh would
+    # be batched into a single group.
+    #
+    # To aggregate by all possible labels use '...' as the sole label name.
+    # This effectively disables aggregation entirely, passing through all
+    # alerts as-is. This is unlikely to be what you want, unless you have
+    # a very low alert volume or your upstream notification system performs
+    # its own grouping. Example: group_by: [...]
+
+    group_by: ['alertname', 'cluster', 'service']
+
+    # When a new group of alerts is created by an incoming alert, wait at
+    # least 'group_wait' to send the initial notification.
+    # This way ensures that you get multiple alerts for the same group that start
+    # firing shortly after another are batched together on the first
+    # notification.
+  
+    group_wait: 30s
+
+    # When the first notification was sent, wait 'group_interval' to send a batch
+    # of new alerts that started firing for that group.
+  
+    group_interval: 5m
+
+    # If an alert has successfully been sent, wait 'repeat_interval' to
+    # resend them.
+ 
+    #    repeat_interval: 600s 
+    repeat_interval: 3h 
+
+    # A default receiver
+    receiver: slack-operations
+
+    # The child route trees.
+    routes:
+    # This routes performs a regular expression match on alert labels to
+    # catch alerts that are related to a list of services.
+      - receiver: production-alerts-it
+        match:
+          NotifyTeam: it 
+          severity: critical
+        group_by: ['alertname', 'cluster', 'service']
+
+      - receiver: production-alerts-operations
+        match:
+          NotifyTeam: operations 
+          severity: critical
+        group_by: ['alertname', 'cluster', 'service']
+
+      - receiver: slack-it
+        match:
+          NotifyTeam: it 
+        group_by: ['alertname', 'cluster', 'service']
+
+      - receiver: slack-operations
+        match:
+          NotifyTeam: operations 
+          severity: moderate 
+        group_by: ['alertname', 'cluster', 'service']
+
+      - receiver: email_operations
+        match:
+          NotifyTeam: operations
+          severity: warning-level
+        group_by: ['alertname', 'cluster', 'service']
+
+# Inhibition rules allow to mute a set of alerts given that another alert is
+# firing.
+# We use this to mute any warning-level notifications if the same alert is 
+# already critical.
+
+inhibit_rules:
+    - source_match:
+        severity: 'critical'
+      target_match:
+        severity: 'warning'
+      # Apply inhibition if the alertname is the same.
+      equal: ['alertname', 'cluster', 'service']
+
+
+receivers:
+    - name: slack-operations
+      webhook_configs:
+        - send_resolved: true
+          url: 'http://prometheus-slack:2000/operations' # the prometheus-slack proxy
+    
+    - name: slack-it
+      webhook_configs:
+        - send_resolved: true
+          url: 'http://prometheus-slack:2000/it' # the prometheus-slack proxy
+
+    - name: 'email_it'
+      email_configs:
+        - to: 'it@orginization.com'
+          send_resolved: true
+          
+    - name: 'email_operations'
+      email_configs:
+        - to: 'operations@orginization.com'
+          send_resolved: true
