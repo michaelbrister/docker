@@ -1,0 +1,21 @@
+- labels:
+    module: http_2xx
+    env: prod 
+    NotifyTeam: operations 
+  targets:
+    - https://www.google.com/
+    - https://aws.amazon.com/
+
+- labels:
+    module: http_2xx
+    env: dev 
+    NotifyTeam: operations 
+  targets:
+    - https://www.facebook.com/
+
+- labels:
+    module: http_2xx
+    env: stage 
+    NotifyTeam: operations 
+  targets:
+    - https://www.stackoverflow.com/
