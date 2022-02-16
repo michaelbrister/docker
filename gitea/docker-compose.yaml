@@ -4,10 +4,6 @@ volumes:
     gitea: {}
     database: {}
 
-networks:
-  web:
-  database:
-
 services:
   gitea:
     image: gitea/gitea:1.16.0
@@ -33,9 +29,6 @@ services:
     ports:
       - "3000:3000"
       - "222:22"
-    networks:
-      - web
-      - database
     depends_on:
       - "db"
     healthcheck:
@@ -50,8 +43,6 @@ services:
     image: postgres:10.5
     ports:
       - "5432:5432"
-    networks:
-      - database
     volumes:
       - database:/var/lib/postgresql/data
     healthcheck:
@@ -79,7 +70,5 @@ services:
     ports:
       - "80:80"
       - "443:443"
-    networks:
-      - web
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
