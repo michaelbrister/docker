@@ -27,6 +27,8 @@ services:
     ports:
       - "3000:3000"
       - "222:22"
+    # Not recommended but a fun learning experience
+    # https://docs.docker.com/compose/startup-order/
     depends_on:
       db:
         condition: service_healthy
