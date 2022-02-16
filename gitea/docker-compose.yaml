@@ -1,6 +1,6 @@
 volumes:
-    gitea: {}
-    database: {}
+  gitea: {}
+  database: {}
 
 networks:
   web:
