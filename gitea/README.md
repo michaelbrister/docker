@@ -1,6 +1,10 @@
 ## docker-compose example
-docker-compose example utilizing traefik for reverse proxy.
+docker-compose example utilizing traefik for reverse proxy. Uses environment variables to pass in parameters on docker-compose up.
 
+To see docker-compose version with parameters added you can run.
+```
+docker-compose config
+```
 
 Export Postgresql password to environment variable to be included in the docker-file
 ```
