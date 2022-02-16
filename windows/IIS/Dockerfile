@@ -8,7 +8,7 @@ RUN dism /online /enable-feature /all /featurename:IIS-ASPNET45
 
 #ENABLE IIS
 RUN powershell -Command `
-	Add-WindowsFeature File-Services; `
+    Add-WindowsFeature File-Services; `
     Add-WindowsFeature FS-FileServer; `
     Add-WindowsFeature Web-Server; `
     Add-WindowsFeature Web-WebServer; `
