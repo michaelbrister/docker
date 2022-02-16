@@ -26,6 +26,7 @@ services:
       - USER_GID=1000
     restart: always
     volumes:
+      # Persist the data between container invocations
       - gitea:/data
       - /etc/timezone:/etc/timezone:ro
       - /etc/localtime:/etc/localtime:ro
@@ -50,11 +51,16 @@ services:
 
   db:
     image: postgres:10.5
+    container_name: db
+    environment:
+      - POSTGRES_PASSWORD=secrect
+      - POSTGRES_USER=postgres
     ports:
       - "5432:5432"
     networks:
       - db
     volumes:
+      # Persist the data between container invocations
       - database:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
