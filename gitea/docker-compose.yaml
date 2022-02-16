@@ -1,0 +1,59 @@
+version: '3.1'
+
+volumes:
+    gitea_data: {}
+
+services:
+  gitea:
+    image: gitea/gitea:1.16.0
+    container_name: gitea
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gitea-web.rule=Host(`gitea.localhost`)"
+      - "traefik.http.routers.gitea-web.entrypoints=web"
+      - "traefik.http.routers.gitea-web.service=gitea-web-svc"
+      - "traefik.http.services.gitea-web-svc.loadbalancer.server.port=3000"
+      - "traefik.tcp.routers.gitea-ssh.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.gitea-ssh.entrypoints=ssh"
+      - "traefik.tcp.routers.gitea-ssh.service=gitea-ssh-svc"
+      - "traefik.tcp.services.gitea-ssh-svc.loadbalancer.server.port=22"
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+    restart: always
+    volumes:
+      - gitea_data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "3000:3000"
+      - "222:22"
+    healthcheck:
+      test: curl --fail http://localhost:3000/ || exit 1
+      interval: 60s
+      retries: 5
+      start_period: 20s
+      timeout: 10s
+    restart: always
+
+  traefik:
+    image: "traefik:v2.6"
+    container_name: "traefik"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-http.entrypoints=web"
+      - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+    command:
+      #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--api.dashboard"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.ssh.address=:2222"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
