@@ -2,6 +2,10 @@ volumes:
     gitea: {}
     database: {}
 
+networks:
+  web:
+  db:
+
 services:
   gitea:
     image: gitea/gitea:1.16.0
@@ -16,6 +20,7 @@ services:
       - "traefik.tcp.routers.gitea-ssh.entrypoints=ssh"
       - "traefik.tcp.routers.gitea-ssh.service=gitea-ssh-svc"
       - "traefik.tcp.services.gitea-ssh-svc.loadbalancer.server.port=22"
+      - "traefik.docker.network=web"
     environment:
       - USER_UID=1000
       - USER_GID=1000
@@ -27,6 +32,9 @@ services:
     ports:
       - "3000:3000"
       - "222:22"
+    networks:
+      - web
+      - db
     # Not recommended but a fun learning experience
     # https://docs.docker.com/compose/startup-order/
     depends_on:
@@ -44,6 +52,8 @@ services:
     image: postgres:10.5
     ports:
       - "5432:5432"
+    networks:
+      - db
     volumes:
       - database:/var/lib/postgresql/data
     healthcheck:
@@ -60,6 +70,7 @@ services:
       - "traefik.http.routers.traefik-http.entrypoints=web"
       - "traefik.http.routers.traefik.rule=Host(`traefik.localhost`)"
       - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.docker.network=web"
     command:
       #- "--log.level=DEBUG"
       - "--api.insecure=true"
@@ -71,5 +82,7 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    networks:
+      - web
     volumes:
       - "/var/run/docker.sock:/var/run/docker.sock:ro"
